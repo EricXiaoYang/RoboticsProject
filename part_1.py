@@ -3,6 +3,38 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+import matplotlib.pyplot as plt
+
+# 0. From camera to OpenCV Images
+latest_img = None
+
+def callback(data):
+    global latest_img
+    latest_img = data
+    rospy.loginfo(rospy.get_caller_id() + ' received a new image.')
+
+def timer_cb(evt):
+    global latest_img
+    bridge = CvBridge()
+    img = bridge.imgmsg_to_cv2(latest_img, desired_encoding="passthrough")
+    detect_flag(img, get_flag_color(img))
+    h = img.shape[0]
+    w = img.shape[1]
+    color = img[h/2, w/2]
+    cv2.imshow('image', img)
+    cv2.waitKey(0)
+
+def listener():
+    rospy.init_node('listener', anonymous=True)
+    rospy.Subscriber('/csi_cam_0/image_raw', Image, callback)
+    rospy.Timer(rospy.Duration(2), timer_cb)
+    rospy.spin()
+
+if __name__ == '__main__':
+    listener()
+
 
 # 1. Flag Detection
 
@@ -33,6 +65,7 @@ def detect_flag(img, color):
     print(mid)
     plt.imshow(edges)
     plt.savefig('draw.png')
+    # TODO: send coordinates of the flag to the controller
 
 
 flag = cv2.imread('Flag.png')
